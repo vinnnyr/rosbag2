@@ -57,14 +57,14 @@ TEST_F(StorageFactoryTest, load_test_plugin) {
     test_constants::MAX_BAGFILE_SIZE,
     read_write_storage->get_bagfile_size());
 
-  auto msg = read_write_storage->read_next();
-  read_write_storage->write(msg);
+  auto msg_with_metadata = read_write_storage->read_next();
+  read_write_storage->write(msg_with_metadata.first, msg_with_metadata.second);
 
   // Load plugin for read only even though it provides read and write interfaces
   auto read_only_storage = factory.open_read_only(
     {bag_file_path, test_plugin_id});
   ASSERT_NE(nullptr, read_only_storage);
-  msg = read_only_storage->read_next();
+  msg_with_metadata = read_only_storage->read_next();
 }
 
 TEST_F(StorageFactoryTest, loads_readonly_plugin_only_for_read_only_storage) {

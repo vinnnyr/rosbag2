@@ -215,6 +215,8 @@ void SqliteStorage::open(
 
   ROSBAG2_STORAGE_DEFAULT_PLUGINS_LOG_INFO_STREAM(
     "Opened database '" << relative_path_ << "' for " << to_string(io_flag) << ".");
+
+  fill_topics_and_types();
 }
 
 void SqliteStorage::activate_transaction()
@@ -241,22 +243,25 @@ void SqliteStorage::commit_transaction()
   active_transaction_ = false;
 }
 
-void SqliteStorage::write(std::shared_ptr<const rosbag2_storage::SerializedBagMessage> message)
+void SqliteStorage::write(
+  std::shared_ptr<const rosbag2_storage::SerializedBagMessage> message,
+  const rosbag2_storage::TopicMetadata & metadata)
 {
   std::lock_guard<std::mutex> db_lock(database_write_mutex_);
-  write_locked(message);
+  write_locked(message, metadata);
 }
 
 void SqliteStorage::write_locked(
-  std::shared_ptr<const rosbag2_storage::SerializedBagMessage> message)
+  std::shared_ptr<const rosbag2_storage::SerializedBagMessage> message,
+  const rosbag2_storage::TopicMetadata & metadata)
 {
   if (!write_statement_) {
     prepare_for_writing();
   }
-  auto topic_entry = topics_.find(message->topic_name);
+  auto topic_entry = topics_.find(metadata.name);
   if (topic_entry == end(topics_)) {
     throw SqliteException(
-            "Topic '" + message->topic_name +
+            "Topic '" + metadata.name +
             "' has not been created yet! Call 'create_topic' first.");
   }
 
@@ -265,8 +270,13 @@ void SqliteStorage::write_locked(
 }
 
 void SqliteStorage::write(
-  const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> & messages)
+  const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> & messages,
+  const std::vector<rosbag2_storage::TopicMetadata> & metadata)
 {
+  if (messages.size() != metadata.size()) {
+    throw SqliteException("Message size has to be equal to metadata size");
+  }
+
   std::lock_guard<std::mutex> db_lock(database_write_mutex_);
   if (!write_statement_) {
     prepare_for_writing();
@@ -274,8 +284,8 @@ void SqliteStorage::write(
 
   activate_transaction();
 
-  for (auto & message : messages) {
-    write_locked(message);
+  for (auto i = 0u; i < messages.size(); ++i) {
+    write_locked(messages[i], metadata[i]);
   }
 
   commit_transaction();
@@ -290,7 +300,8 @@ bool SqliteStorage::has_next()
   return current_message_row_ != message_result_.end();
 }
 
-std::shared_ptr<rosbag2_storage::SerializedBagMessage> SqliteStorage::read_next()
+std::pair<std::shared_ptr<rosbag2_storage::SerializedBagMessage>, rosbag2_storage::TopicMetadata>
+SqliteStorage::read_next()
 {
   if (!read_statement_) {
     prepare_for_reading();
@@ -299,10 +310,11 @@ std::shared_ptr<rosbag2_storage::SerializedBagMessage> SqliteStorage::read_next(
   auto bag_message = std::make_shared<rosbag2_storage::SerializedBagMessage>();
   bag_message->serialized_data = std::get<0>(*current_message_row_);
   bag_message->time_stamp = std::get<1>(*current_message_row_);
-  bag_message->topic_name = std::get<2>(*current_message_row_);
+
+  auto topic_metadata = all_topics_and_types_.at(std::get<2>(*current_message_row_));
 
   ++current_message_row_;
-  return bag_message;
+  return {bag_message, topic_metadata};
 }
 
 std::vector<rosbag2_storage::TopicMetadata> SqliteStorage::get_all_topics_and_types()
@@ -311,7 +323,12 @@ std::vector<rosbag2_storage::TopicMetadata> SqliteStorage::get_all_topics_and_ty
     fill_topics_and_types();
   }
 
-  return all_topics_and_types_;
+  std::vector<rosbag2_storage::TopicMetadata> metadata;
+  metadata.reserve(all_topics_and_types_.size());
+  for (const auto & m : all_topics_and_types_) {
+    metadata.push_back(m.second);
+  }
+  return metadata;
 }
 
 uint64_t SqliteStorage::get_bagfile_size() const
@@ -409,8 +426,8 @@ void SqliteStorage::fill_topics_and_types()
   auto query_results = statement->execute_query<std::string, std::string, std::string>();
 
   for (auto result : query_results) {
-    all_topics_and_types_.push_back(
-      {std::get<0>(result), std::get<1>(result), std::get<2>(result), ""});
+    all_topics_and_types_.insert(
+      {std::get<0>(result), {std::get<0>(result), std::get<1>(result), std::get<2>(result), ""}});
   }
 }
 

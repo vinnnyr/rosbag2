@@ -106,18 +106,21 @@ public:
       std::string topic_name = std::get<2>(msg);
       std::string type_name = std::get<3>(msg);
       std::string rmw_format = std::get<4>(msg);
-      writable_storage->create_topic({topic_name, type_name, rmw_format, ""});
+      rosbag2_storage::TopicMetadata metadata = {topic_name, type_name, rmw_format, ""};
+      writable_storage->create_topic(metadata);
       auto bag_message = std::make_shared<rosbag2_storage::SerializedBagMessage>();
       bag_message->serialized_data = make_serialized_message(std::get<0>(msg));
       bag_message->time_stamp = std::get<1>(msg);
-      bag_message->topic_name = topic_name;
-      writable_storage->write(bag_message);
+      bag_message->type_name = type_name;
+
+      writable_storage->write(bag_message, metadata);
     }
 
     metadata_io_.write_metadata(temporary_dir_path_, writable_storage->get_metadata());
   }
 
-  std::vector<std::shared_ptr<rosbag2_storage::SerializedBagMessage>>
+  std::vector<std::pair<
+      std::shared_ptr<rosbag2_storage::SerializedBagMessage>, rosbag2_storage::TopicMetadata>>
   read_all_messages_from_sqlite()
   {
     std::unique_ptr<rosbag2_storage::storage_interfaces::ReadOnlyInterface> readable_storage =
@@ -128,7 +131,9 @@ public:
     readable_storage->open(
       {db_file, plugin_id_},
       rosbag2_storage::storage_interfaces::IOFlag::READ_ONLY);
-    std::vector<std::shared_ptr<rosbag2_storage::SerializedBagMessage>> read_messages;
+    std::vector<std::pair<
+        std::shared_ptr<rosbag2_storage::SerializedBagMessage>, rosbag2_storage::TopicMetadata>>
+    read_messages;
 
     while (readable_storage->has_next()) {
       read_messages.push_back(readable_storage->read_next());

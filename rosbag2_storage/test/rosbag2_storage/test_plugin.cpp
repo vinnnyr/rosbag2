@@ -16,6 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "pluginlib/class_list_macros.hpp"
@@ -48,10 +49,12 @@ bool TestPlugin::has_next()
   return true;
 }
 
-std::shared_ptr<rosbag2_storage::SerializedBagMessage> TestPlugin::read_next()
+std::pair<std::shared_ptr<rosbag2_storage::SerializedBagMessage>, rosbag2_storage::TopicMetadata>
+TestPlugin::read_next()
 {
   std::cout << "\nreading\n";
-  return std::shared_ptr<rosbag2_storage::SerializedBagMessage>();
+  return std::make_pair(
+    std::shared_ptr<rosbag2_storage::SerializedBagMessage>(), rosbag2_storage::TopicMetadata());
 }
 
 void TestPlugin::create_topic(const rosbag2_storage::TopicMetadata & topic)
@@ -64,16 +67,21 @@ void TestPlugin::remove_topic(const rosbag2_storage::TopicMetadata & topic)
   std::cout << "Removed topic with name =" << topic.name << " and type =" << topic.type << ".\n";
 }
 
-void TestPlugin::write(const std::shared_ptr<const rosbag2_storage::SerializedBagMessage> msg)
+void TestPlugin::write(
+  const std::shared_ptr<const rosbag2_storage::SerializedBagMessage> msg,
+  const rosbag2_storage::TopicMetadata & metadata)
 {
   (void) msg;
+  (void) metadata;
   std::cout << "\nwriting\n";
 }
 
 void TestPlugin::write(
-  const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> & msg)
+  const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> & msg,
+  const std::vector<rosbag2_storage::TopicMetadata> & metadata)
 {
   (void) msg;
+  (void) metadata;
   std::cout << "\nwriting multiple\n";
 }
 

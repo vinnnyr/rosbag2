@@ -67,9 +67,10 @@ TEST_F(StorageTestFixture, string_messages_are_written_and_read_to_and_from_sqli
 
   ASSERT_THAT(read_messages, SizeIs(3));
   for (size_t i = 0; i < 3; i++) {
-    EXPECT_THAT(deserialize_message(read_messages[i]->serialized_data), Eq(string_messages[i]));
-    EXPECT_THAT(read_messages[i]->time_stamp, Eq(std::get<1>(messages[i])));
-    EXPECT_THAT(read_messages[i]->topic_name, Eq(topics[i]));
+    EXPECT_THAT(
+      deserialize_message(read_messages[i].first->serialized_data), Eq(string_messages[i]));
+    EXPECT_THAT(read_messages[i].first->time_stamp, Eq(std::get<1>(messages[i])));
+    EXPECT_THAT(read_messages[i].second.name, Eq(topics[i]));
   }
 }
 
@@ -108,10 +109,10 @@ TEST_F(StorageTestFixture, get_next_returns_messages_in_timestamp_order) {
 
   EXPECT_TRUE(readable_storage->has_next());
   auto first_message = readable_storage->read_next();
-  EXPECT_THAT(first_message->time_stamp, Eq(2));
+  EXPECT_THAT(first_message.first->time_stamp, Eq(2));
   EXPECT_TRUE(readable_storage->has_next());
   auto second_message = readable_storage->read_next();
-  EXPECT_THAT(second_message->time_stamp, Eq(6));
+  EXPECT_THAT(second_message.first->time_stamp, Eq(6));
   EXPECT_FALSE(readable_storage->has_next());
 }
 
@@ -136,10 +137,10 @@ TEST_F(StorageTestFixture, read_next_returns_filtered_messages) {
 
   EXPECT_TRUE(readable_storage->has_next());
   auto first_message = readable_storage->read_next();
-  EXPECT_THAT(first_message->topic_name, Eq("topic2"));
+  EXPECT_THAT(first_message.second.name, Eq("topic2"));
   EXPECT_TRUE(readable_storage->has_next());
   auto second_message = readable_storage->read_next();
-  EXPECT_THAT(second_message->topic_name, Eq("topic3"));
+  EXPECT_THAT(second_message.second.name, Eq("topic3"));
   EXPECT_FALSE(readable_storage->has_next());
 
   // Test reset filter
@@ -152,13 +153,13 @@ TEST_F(StorageTestFixture, read_next_returns_filtered_messages) {
 
   EXPECT_TRUE(readable_storage2->has_next());
   auto third_message = readable_storage2->read_next();
-  EXPECT_THAT(third_message->topic_name, Eq("topic1"));
+  EXPECT_THAT(third_message.second.name, Eq("topic1"));
   EXPECT_TRUE(readable_storage2->has_next());
   auto fourth_message = readable_storage2->read_next();
-  EXPECT_THAT(fourth_message->topic_name, Eq("topic2"));
+  EXPECT_THAT(fourth_message.second.name, Eq("topic2"));
   EXPECT_TRUE(readable_storage2->has_next());
   auto fifth_message = readable_storage2->read_next();
-  EXPECT_THAT(fifth_message->topic_name, Eq("topic3"));
+  EXPECT_THAT(fifth_message.second.name, Eq("topic3"));
   EXPECT_FALSE(readable_storage2->has_next());
 }
 
@@ -186,8 +187,8 @@ TEST_F(StorageTestFixture, get_all_topics_and_types_returns_the_correct_vector) 
   EXPECT_THAT(
     topics_and_types, ElementsAreArray(
   {
-    rosbag2_storage::TopicMetadata{"topic1", "type1", "rmw1", ""},
-    rosbag2_storage::TopicMetadata{"topic2", "type2", "rmw2", ""}
+    rosbag2_storage::TopicMetadata{"topic2", "type2", "rmw2", ""},
+    rosbag2_storage::TopicMetadata{"topic1", "type1", "rmw1", ""}
   }));
 }
 

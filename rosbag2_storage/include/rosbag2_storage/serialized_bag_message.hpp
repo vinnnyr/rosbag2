@@ -28,7 +28,8 @@ struct SerializedBagMessage
 {
   std::shared_ptr<rcutils_uint8_array_t> serialized_data;
   rcutils_time_point_value_t time_stamp;
-  std::string topic_name;
+  std::string type_name;
+  // std::string serialization_format;
 };
 
 }  // namespace rosbag2_storage

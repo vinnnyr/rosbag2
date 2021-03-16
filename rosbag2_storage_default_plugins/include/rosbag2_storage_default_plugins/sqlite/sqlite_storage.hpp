@@ -20,6 +20,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "rcpputils/thread_safety_annotations.hpp"
@@ -59,15 +60,18 @@ public:
 
   void create_topic(const rosbag2_storage::TopicMetadata & topic) override;
 
-  void write(std::shared_ptr<const rosbag2_storage::SerializedBagMessage> message) override;
+  void write(
+    std::shared_ptr<const rosbag2_storage::SerializedBagMessage> message,
+    const rosbag2_storage::TopicMetadata & metadata) override;
 
   void write(
-    const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> & messages)
-  override;
+    const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> & messages,
+    const std::vector<rosbag2_storage::TopicMetadata> & metadata) override;
 
   bool has_next() override;
 
-  std::shared_ptr<rosbag2_storage::SerializedBagMessage> read_next() override;
+  std::pair<std::shared_ptr<rosbag2_storage::SerializedBagMessage>, rosbag2_storage::TopicMetadata>
+  read_next() override;
 
   std::vector<rosbag2_storage::TopicMetadata> get_all_topics_and_types() override;
 
@@ -94,8 +98,10 @@ private:
   void fill_topics_and_types();
   void activate_transaction();
   void commit_transaction();
-  void write_locked(std::shared_ptr<const rosbag2_storage::SerializedBagMessage> message)
-  RCPPUTILS_TSA_REQUIRES(database_write_mutex_);
+  void write_locked(
+    std::shared_ptr<const rosbag2_storage::SerializedBagMessage> message,
+    const rosbag2_storage::TopicMetadata & metadata);
+  RCPPUTILS_TSA_REQUIRES(database_write_mutex_)
 
   using ReadQueryResult = SqliteStatementWrapper::QueryResult<
     std::shared_ptr<rcutils_uint8_array_t>, rcutils_time_point_value_t, std::string>;
@@ -107,7 +113,7 @@ private:
   ReadQueryResult::Iterator current_message_row_ {
     nullptr, SqliteStatementWrapper::QueryResult<>::Iterator::POSITION_END};
   std::unordered_map<std::string, int> topics_ RCPPUTILS_TSA_GUARDED_BY(database_write_mutex_);
-  std::vector<rosbag2_storage::TopicMetadata> all_topics_and_types_;
+  std::unordered_map<std::string, rosbag2_storage::TopicMetadata> all_topics_and_types_;
   std::string relative_path_;
   std::atomic_bool active_transaction_ {false};
   rosbag2_storage::StorageFilter storage_filter_ {};

@@ -30,7 +30,7 @@ struct TopicMetadata
 
   bool operator==(const rosbag2_storage::TopicMetadata & rhs) const
   {
-    return name == rhs.name && type == rhs.type && serialization_format == rhs.serialization_format;
+    return name == rhs.name && type == rhs.type;
   }
 };
 

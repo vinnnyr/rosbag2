@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "rosbag2_storage/storage_filter.hpp"
@@ -33,7 +34,8 @@ public:
 
   bool has_next() override;
 
-  std::shared_ptr<rosbag2_storage::SerializedBagMessage> read_next() override;
+  std::pair<std::shared_ptr<rosbag2_storage::SerializedBagMessage>, rosbag2_storage::TopicMetadata>
+  read_next() override;
 
   std::vector<rosbag2_storage::TopicMetadata> get_all_topics_and_types() override;
 

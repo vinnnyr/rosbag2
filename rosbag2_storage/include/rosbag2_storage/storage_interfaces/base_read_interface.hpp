@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "rosbag2_storage/serialized_bag_message.hpp"
@@ -35,7 +36,7 @@ public:
 
   virtual bool has_next() = 0;
 
-  virtual std::shared_ptr<SerializedBagMessage> read_next() = 0;
+  virtual std::pair<std::shared_ptr<SerializedBagMessage>, TopicMetadata> read_next() = 0;
 
   virtual std::vector<TopicMetadata> get_all_topics_and_types() = 0;
 };

@@ -15,6 +15,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "pluginlib/class_list_macros.hpp"
@@ -45,10 +46,12 @@ bool TestReadOnlyPlugin::has_next()
   return true;
 }
 
-std::shared_ptr<rosbag2_storage::SerializedBagMessage> TestReadOnlyPlugin::read_next()
+std::pair<std::shared_ptr<rosbag2_storage::SerializedBagMessage>, rosbag2_storage::TopicMetadata>
+TestReadOnlyPlugin::read_next()
 {
   std::cout << "\nreading\n";
-  return std::shared_ptr<rosbag2_storage::SerializedBagMessage>();
+  return std::make_pair(
+    std::shared_ptr<rosbag2_storage::SerializedBagMessage>(), rosbag2_storage::TopicMetadata());
 }
 
 std::vector<rosbag2_storage::TopicMetadata> TestReadOnlyPlugin::get_all_topics_and_types()
