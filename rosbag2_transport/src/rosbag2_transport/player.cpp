@@ -169,10 +169,14 @@ void Player::play_messages_from_queue()
 void Player::play_messages_until_queue_empty()
 {
   rosbag2_storage::SerializedBagMessageSharedPtr message;
+  rclcpp::executors::SingleThreadedExecutor exec;
+  exec.add_node(rosbag2_transport_);
   while (message_queue_.try_dequeue(message) && rclcpp::ok()) {
     // Do not move on until sleep_until returns true
     // It will always sleep, so this is not a tight busy loop on pause
-    while (rclcpp::ok() && !clock_->sleep_until(message->time_stamp)) {}
+    do {
+      exec.spin_some();
+    } while (rclcpp::ok() && !clock_->sleep_until(message->time_stamp));
     if (rclcpp::ok()) {
       auto publisher_iter = publishers_.find(message->topic_name);
       if (publisher_iter != publishers_.end()) {
@@ -216,8 +220,27 @@ void Player::prepare_publishers(const PlayOptions & options)
 
 void Player::prepare_clock(const PlayOptions & options, rcutils_time_point_value_t starting_time)
 {
-  double rate = options.rate > 0.0 ? options.rate : 1.0;
-  clock_ = std::make_unique<rosbag2_cpp::TimeControllerClock>(starting_time, rate);
+  float rate = options.rate > 0.0 ? options.rate : 1.0;
+  std::chrono::nanoseconds sleep_timeout{25000000}; // default to 40Hz maximum spin
+
+  // Create /clock publisher
+  if (options.clock_publish_frequency > 0.f) {
+    // NOTE: PlayerClock does not own this publisher because rosbag2_cpp
+    // should not own transport-based functionality
+    std::chrono::duration<double> clock_period{1.0 / options.clock_publish_frequency};
+    // When publishing clock, make sure we wake up often enough to spin and publish
+    sleep_timeout = std::chrono::duration_cast<std::chrono::nanoseconds>(clock_period);
+    clock_publisher_ = rosbag2_transport_->create_publisher<rosgraph_msgs::msg::Clock>(
+      "/clock", rclcpp::ClockQoS());
+    clock_publish_timer_ = rosbag2_transport_->create_wall_timer(
+      sleep_timeout, [this]() {
+        auto msg = rosgraph_msgs::msg::Clock();
+        msg.clock = rclcpp::Time(clock_->now());
+        clock_publisher_->publish(msg);
+      });
+  }
+
+  clock_ = std::make_unique<rosbag2_cpp::TimeControllerClock>(starting_time, sleep_timeout, rate);
 }
 
 }  // namespace rosbag2_transport

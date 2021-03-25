@@ -62,6 +62,7 @@ public:
 
   std::mutex mutex;
   std::condition_variable cv;
+  std::chrono::nanoseconds sleep_timeout;
   PlayerClock::NowFunction now_fn RCPPUTILS_TSA_GUARDED_BY(mutex);
   double rate RCPPUTILS_TSA_GUARDED_BY(mutex) = 1.0;
   TimeReference reference RCPPUTILS_TSA_GUARDED_BY(mutex);
@@ -69,12 +70,14 @@ public:
 
 TimeControllerClock::TimeControllerClock(
   rcutils_time_point_value_t starting_time,
+  std::chrono::nanoseconds sleep_timeout,
   double rate,
   NowFunction now_fn)
 : impl_(std::make_unique<TimeControllerClockImpl>())
 {
   std::lock_guard<std::mutex> lock(impl_->mutex);
   impl_->now_fn = now_fn;
+  impl_->sleep_timeout = sleep_timeout;
   impl_->reference.ros = starting_time;
   impl_->reference.steady = impl_->now_fn();
   impl_->rate = rate;
@@ -93,7 +96,11 @@ bool TimeControllerClock::sleep_until(rcutils_time_point_value_t until)
 {
   {
     std::unique_lock<std::mutex> lock(impl_->mutex);
-    const auto steady_until = impl_->ros_to_steady(until);
+    const auto until_timeout = impl_->now_fn() + impl_->sleep_timeout;
+    auto steady_until = impl_->ros_to_steady(until);
+    if (until_timeout < steady_until) {
+      steady_until = until_timeout;
+    }
     impl_->cv.wait_until(lock, steady_until);
   }
   return now() >= until;

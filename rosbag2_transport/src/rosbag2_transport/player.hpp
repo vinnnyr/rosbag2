@@ -23,12 +23,12 @@
 #include <unordered_map>
 
 #include "moodycamel/readerwriterqueue.h"
-
+#include "rclcpp/publisher.hpp"
 #include "rclcpp/qos.hpp"
-
 #include "rosbag2_cpp/clocks/player_clock.hpp"
 #include "rosbag2_storage/serialized_bag_message.hpp"
 #include "rosbag2_transport/play_options.hpp"
+#include "rosgraph_msgs/msg/clock.hpp"
 
 namespace rosbag2_cpp
 {
@@ -69,6 +69,8 @@ private:
   std::unordered_map<std::string, std::shared_ptr<GenericPublisher>> publishers_;
   std::unordered_map<std::string, rclcpp::QoS> topic_qos_profile_overrides_;
   std::unique_ptr<rosbag2_cpp::PlayerClock> clock_;
+  rclcpp::Publisher<rosgraph_msgs::msg::Clock>::SharedPtr clock_publisher_;
+  std::shared_ptr<rclcpp::TimerBase> clock_publish_timer_;
 };
 
 }  // namespace rosbag2_transport

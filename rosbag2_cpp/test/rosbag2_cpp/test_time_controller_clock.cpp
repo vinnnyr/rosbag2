@@ -37,13 +37,14 @@ public:
 
   NowFunction now_fn;
   SteadyTimePoint return_time;  // defaults to 0
+  std::chrono::nanoseconds sleep_timeout{25000000};  // 40Hz
   rcutils_time_point_value_t ros_start_time = 0;
 };
 
 TEST_F(TimeControllerClockTest, steadytime_precision)
 {
   const double playback_rate = 1.0;
-  rosbag2_cpp::TimeControllerClock pclock(ros_start_time, playback_rate, now_fn);
+  rosbag2_cpp::TimeControllerClock pclock(ros_start_time, sleep_timeout, playback_rate, now_fn);
 
   const SteadyTimePoint begin_time(std::chrono::seconds(0));
   return_time = begin_time;
@@ -75,7 +76,7 @@ TEST_F(TimeControllerClockTest, nonzero_start_time)
 {
   ros_start_time = 1234567890LL;
   const double playback_rate = 1.0;
-  rosbag2_cpp::TimeControllerClock pclock(ros_start_time, playback_rate, now_fn);
+  rosbag2_cpp::TimeControllerClock pclock(ros_start_time, sleep_timeout, playback_rate, now_fn);
 
   const SteadyTimePoint begin_time(std::chrono::seconds(0));
   return_time = begin_time;
@@ -88,7 +89,7 @@ TEST_F(TimeControllerClockTest, nonzero_start_time)
 TEST_F(TimeControllerClockTest, fast_rate)
 {
   const double playback_rate = 2.5;
-  rosbag2_cpp::TimeControllerClock pclock(ros_start_time, playback_rate, now_fn);
+  rosbag2_cpp::TimeControllerClock pclock(ros_start_time, sleep_timeout, playback_rate, now_fn);
 
   const SteadyTimePoint begin_time(std::chrono::seconds(0));
   return_time = begin_time;
@@ -102,7 +103,7 @@ TEST_F(TimeControllerClockTest, fast_rate)
 TEST_F(TimeControllerClockTest, slow_rate)
 {
   const double playback_rate = 0.4;
-  rosbag2_cpp::TimeControllerClock pclock(ros_start_time, playback_rate, now_fn);
+  rosbag2_cpp::TimeControllerClock pclock(ros_start_time, sleep_timeout, playback_rate, now_fn);
 
   const SteadyTimePoint begin_time(std::chrono::seconds(0));
   return_time = begin_time;
