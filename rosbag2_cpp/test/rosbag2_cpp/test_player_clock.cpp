@@ -26,12 +26,22 @@ ROSTimePoint as_nanos(const SteadyTimePoint & time)
   return std::chrono::duration_cast<std::chrono::nanoseconds>(time.time_since_epoch()).count();
 }
 
-TEST(PlayerClock, steadytime_precision)
+class PlayerClockTest : public Test
 {
+public:
+  PlayerClockTest()
+  {
+    now_fn = [this]() {
+        return return_time;
+      };
+  }
+
+  NowFunction now_fn;
   SteadyTimePoint return_time;
-  NowFunction now_fn = [&return_time]() {
-      return return_time;
-    };
+};
+
+TEST_F(PlayerClockTest, steadytime_precision)
+{
   rosbag2_cpp::PlayerClock pclock(0, 1.0, now_fn);
 
   const SteadyTimePoint begin_time(std::chrono::seconds(0));
@@ -60,12 +70,8 @@ TEST(PlayerClock, steadytime_precision)
   EXPECT_LT(std::abs(pclock.now() - over_limit_nanos), 10LL);
 }
 
-TEST(PlayerClock, nonzero_start_time)
+TEST_F(PlayerClockTest, nonzero_start_time)
 {
-  SteadyTimePoint return_time;
-  NowFunction now_fn = [&return_time]() {
-      return return_time;
-    };
   const ROSTimePoint start_time = 1234567890LL;
   rosbag2_cpp::PlayerClock pclock(start_time, 1.0, now_fn);
 
@@ -75,12 +81,8 @@ TEST(PlayerClock, nonzero_start_time)
   EXPECT_EQ(pclock.now(), start_time + as_nanos(return_time));
 }
 
-TEST(PlayerClock, fast_rate)
+TEST_F(PlayerClockTest, fast_rate)
 {
-  SteadyTimePoint return_time;
-  NowFunction now_fn = [&return_time]() {
-      return return_time;
-    };
   rosbag2_cpp::PlayerClock pclock(0, 2.5, now_fn);
 
   const SteadyTimePoint begin_time(std::chrono::seconds(0));
@@ -92,12 +94,8 @@ TEST(PlayerClock, fast_rate)
   EXPECT_EQ(pclock.now(), as_nanos(some_time) * 2.5);
 }
 
-TEST(PlayerClock, slow_rate)
+TEST_F(PlayerClockTest, slow_rate)
 {
-  SteadyTimePoint return_time;
-  NowFunction now_fn = [&return_time]() {
-      return return_time;
-    };
   rosbag2_cpp::PlayerClock pclock(0, 0.4, now_fn);
 
   const SteadyTimePoint begin_time(std::chrono::seconds(0));
@@ -107,4 +105,8 @@ TEST(PlayerClock, slow_rate)
   const SteadyTimePoint some_time(std::chrono::seconds(12));
   return_time = some_time;
   EXPECT_EQ(pclock.now(), as_nanos(some_time) * 0.4);
+}
+
+TEST_F(PlayerClockTest, simple_pause)
+{
 }

@@ -178,7 +178,8 @@ void Player::play_messages_until_queue_empty()
 {
   rosbag2_storage::SerializedBagMessagePtr message;
   while (message_queue_.try_dequeue(message) && rclcpp::ok()) {
-    clock_->sleep_until(message->time_stamp);
+    // Must wait for a true result that we reached the time
+    while (!clock_>sleep_until(messagde->time_stamp) && rclcpp::ok()) {}
     if (rclcpp::ok()) {
       auto publisher_iter = publishers_.find(message->topic_name);
       if (publisher_iter != publishers_.end()) {

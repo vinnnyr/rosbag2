@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -57,9 +58,26 @@ public:
     return reference.steady + std::chrono::nanoseconds(diff_nanos);
   }
 
-  double rate = 1.0;
-  PlayerClock::NowFunction now_fn;
+  void snapshot(PlayerClock::ROSTimePoint ros_now)
+  {
+    reference.ros = ros_now;
+    reference.steady = steady_now();
+  }
+
+  PlayerClock::ROSTimePoint ros_now()
+  {
+    if (paused) {
+      return reference.ros;
+    }
+    return steady_to_ros(steady_now());
+  }
+
+  PlayerClock::NowFunction steady_now;
+  std::condition_variable cv;
   std::mutex mutex;
+
+  double rate RCPPUTILS_TSA_GUARDED_BY(mutex) = 1.0;
+  bool paused RCPPUTILS_TSA_GUARDED_BY(mutex) = false;
   TimeReference reference RCPPUTILS_TSA_GUARDED_BY(mutex);
 };
 
@@ -67,10 +85,9 @@ PlayerClock::PlayerClock(ROSTimePoint starting_time, double rate, NowFunction no
 : impl_(std::make_unique<PlayerClockImpl>())
 {
   std::lock_guard<std::mutex> lock(impl_->mutex);
-  impl_->now_fn = now_fn;
-  impl_->reference.ros = starting_time;
-  impl_->reference.steady = impl_->now_fn();
+  impl_->steady_now = now_fn;
   impl_->rate = rate;
+  impl_->snapshot(starting_time);
 }
 
 PlayerClock::~PlayerClock()
@@ -79,19 +96,16 @@ PlayerClock::~PlayerClock()
 PlayerClock::ROSTimePoint PlayerClock::now() const
 {
   std::lock_guard<std::mutex> lock(impl_->mutex);
-  return impl_->steady_to_ros(impl_->now_fn());
+  return impl_->ros_now();
 }
 
 bool PlayerClock::sleep_until(ROSTimePoint until)
 {
-  SteadyTimePoint steady_until;
   {
-    std::lock_guard<std::mutex> lock(impl_->mutex);
-    steady_until = impl_->ros_to_steady(until);
+    std::unique_lock<std::mutex> lock(impl_->mutex);
+    SteadyTimePoint steady_until = impl_->ros_to_steady(until);
+    impl_->cv.wait_until(lock, steady_until);
   }
-  // TODO(emersonknapp) - when we have methods that can change timeflow during a sleep,
-  // it will probably be better to use a condition_variable::wait_until
-  std::this_thread::sleep_until(steady_until);
   return now() >= until;
 }
 
@@ -99,6 +113,31 @@ double PlayerClock::get_rate() const
 {
   std::lock_guard<std::mutex> lock(impl_->mutex);
   return impl_->rate;
+}
+
+void PlayerClock::set_paused(bool paused)
+{
+  {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    if (paused == impl_->paused) {
+      return;
+    }
+    // Note: needs to not be paused when taking snapshot, otherwise it will use last ros ref
+    if (!paused) {
+      impl_->paused = paused;
+    }
+    impl_->snapshot(now());
+    if (paused) {
+      impl_->paused = paused;
+    }
+  }
+  impl_->cv.notify_all();
+}
+
+bool PlayerClock::get_paused() const
+{
+  std::lock_guard<std::mutex> lock(impl_->mutex);
+  return impl_->paused;
 }
 
 }  // namespace rosbag2_cpp

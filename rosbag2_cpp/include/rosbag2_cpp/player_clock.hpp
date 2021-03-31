@@ -87,6 +87,20 @@ public:
   ROSBAG2_CPP_PUBLIC
   double get_rate() const;
 
+  /**
+   * Set the paused state of the clock.
+   * If currently in a `sleep_until`, this will wake the sleep to return false,
+   * so that the caller is not hanging forever.
+   */
+  ROSBAG2_CPP_PUBLIC
+  void set_paused(bool paused);
+
+  /**
+   * Return whether the clock is currently paused.
+   */
+  ROSBAG2_CPP_PUBLIC
+  bool get_paused() const;
+
 private:
   std::unique_ptr<PlayerClockImpl> impl_;
 };
