@@ -115,26 +115,35 @@ double PlayerClock::get_rate() const
   return impl_->rate;
 }
 
-void PlayerClock::set_paused(bool paused)
+void PlayerClock::pause()
 {
   {
     std::lock_guard<std::mutex> lock(impl_->mutex);
-    if (paused == impl_->paused) {
+    if (impl_->paused) {
       return;
     }
     // Note: needs to not be paused when taking snapshot, otherwise it will use last ros ref
-    if (!paused) {
-      impl_->paused = paused;
-    }
     impl_->snapshot(now());
-    if (paused) {
-      impl_->paused = paused;
-    }
+    impl_->paused = true;
   }
   impl_->cv.notify_all();
 }
 
-bool PlayerClock::get_paused() const
+void PlayerClock::resume()
+{
+  {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    if (!impl_->paused) {
+      return;
+    }
+    // Note: needs to not be paused when taking snapshot, otherwise it will use last ros ref
+    impl_->paused = false;
+    impl_->snapshot(now());
+  }
+  impl_->cv.notify_all();
+}
+
+bool PlayerClock::is_paused() const
 {
   std::lock_guard<std::mutex> lock(impl_->mutex);
   return impl_->paused;
