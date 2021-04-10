@@ -21,8 +21,12 @@
 #include <string>
 #include <vector>
 
+#include "rosbag2_cpp/converter_options.hpp"
 #include "rosbag2_cpp/reader.hpp"
 #include "rosbag2_cpp/writer.hpp"
+
+#include "rosbag2_storage/serialized_bag_message.hpp"
+#include "rosbag2_storage/storage_options.hpp"
 
 // This is necessary because of using stl types here. It is completely safe, because
 // a) the member is not accessible from the outside
@@ -62,15 +66,15 @@ public:
    * \param output_converter_options Converter options for the output bagfile
    **/
   void rewrite(
-    StorageOptions input_storage_options,
+    rosbag2_storage::StorageOptions input_storage_options,
     ConverterOptions input_converter_options,
-    StorageOptions output_storage_options,
+    rosbag2_storage::StorageOptions output_storage_options,
     ConverterOptions output_converter_options
   );
 
 private:
-  std::unique_ptr<reader_interfaces::BaseReaderInterface> reader_;
-  std::unique_ptr<writer_interfaces::BaseWriterInterface> writer_;
+  std::unique_ptr<Reader> reader_;
+  std::unique_ptr<Writer> writer_;
 };
 
 }  // namespace rosbag2_cpp

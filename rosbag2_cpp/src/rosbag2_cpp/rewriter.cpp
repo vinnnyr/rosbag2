@@ -36,9 +36,9 @@ Rewriter::Rewriter(
 Rewriter::~Rewriter()
 {}
 
-void Rewriter::rewrite(StorageOptions input_storage_options,
+void Rewriter::rewrite(rosbag2_storage::StorageOptions input_storage_options,
     ConverterOptions input_converter_options,
-    StorageOptions output_storage_options,
+    rosbag2_storage::StorageOptions output_storage_options,
     ConverterOptions output_converter_options)
   {
     reader_->open(input_storage_options, input_converter_options);
