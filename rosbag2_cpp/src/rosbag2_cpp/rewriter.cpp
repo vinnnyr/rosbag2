@@ -36,18 +36,37 @@ Rewriter::Rewriter(
 Rewriter::~Rewriter()
 {}
 
-void Rewriter::rewrite(rosbag2_storage::StorageOptions input_storage_options,
-    ConverterOptions input_converter_options,
-    rosbag2_storage::StorageOptions output_storage_options,
-    ConverterOptions output_converter_options)
-  {
-    reader_->open(input_storage_options, input_converter_options);
-    writer_->open(output_storage_options, output_converter_options);
+void Rewriter::rewrite(
+  rosbag2_storage::StorageOptions input_storage_options,
+  ConverterOptions input_converter_options,
+  rosbag2_storage::StorageOptions output_storage_options,
+  ConverterOptions output_converter_options)
+{
+  reader_->open(input_storage_options, input_converter_options);
+  writer_->open(output_storage_options, output_converter_options);
+
+  while (reader_->has_next()) {
+    auto msg = reader_->read_next();
+    writer_->write(msg);
+  }
+}
+
+void Rewriter::rewrite_many(
+  std::vector<rosbag2_storage::StorageOptions> input_storage_options,
+  ConverterOptions input_converter_options,
+  rosbag2_storage::StorageOptions output_storage_options,
+  ConverterOptions output_converter_options)
+{
+  writer_->open(output_storage_options, output_converter_options);
+
+  for (auto & storage : input_storage_options) {
+    reader_->open(storage, input_converter_options);
 
     while (reader_->has_next()) {
       auto msg = reader_->read_next();
       writer_->write(msg);
     }
   }
+}
 
 }  // namespace rosbag2_cpp

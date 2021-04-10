@@ -46,7 +46,6 @@ namespace rosbag2_cpp
  */
 class ROSBAG2_CPP_PUBLIC Rewriter final
 {
-
 public:
   explicit Rewriter(
     std::unique_ptr<Reader> reader_ =
@@ -59,7 +58,7 @@ public:
   /**
    * Opens an existing bagfile, and rewrites it into another bagfile
    * with new settings to a new location.
-   * 
+   *
    * \param input_storage_options Storage options for the input bagfile
    * \param input_converter_options Converter options for the input bagfile
    * \param output_storage_options Storage options for the output bagfile
@@ -67,6 +66,24 @@ public:
    **/
   void rewrite(
     rosbag2_storage::StorageOptions input_storage_options,
+    ConverterOptions input_converter_options,
+    rosbag2_storage::StorageOptions output_storage_options,
+    ConverterOptions output_converter_options
+  );
+
+  /**
+   * Opens a a vector of existing bagfiles, and rewrites it into another bagfile
+   * with new settings to a new location.
+   *
+   * \note the API consumer is responsible for sorting the input_storage_options according to desired order.
+   *
+   * \param input_storage_options Storage options for the input bagfile.
+   * \param input_converter_options Converter options for the input bagfile
+   * \param output_storage_options Storage options for the output bagfile
+   * \param output_converter_options Converter options for the output bagfile
+   **/
+  void rewrite_many(
+    std::vector<rosbag2_storage::StorageOptions> input_storage_options,
     ConverterOptions input_converter_options,
     rosbag2_storage::StorageOptions output_storage_options,
     ConverterOptions output_converter_options
